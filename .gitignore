@@ -1,0 +1,48 @@
+# Virtual Environments
+.venv/
+tf_env/
+venv/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Dataset Files (CSV)
+*.csv
+01-12/
+03-11/
+
+# Model Files
+*.h5
+*.pkl
+*.pth
+*.onnx
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Metrics (optional - uncomment if you don't want to track)
+# fl_metrics.json
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
