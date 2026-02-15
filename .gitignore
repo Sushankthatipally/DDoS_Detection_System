@@ -13,6 +13,7 @@ __pycache__/
 
 # Dataset Files (CSV)
 *.csv
+!traffic_log.csv
 01-12/
 03-11/
 

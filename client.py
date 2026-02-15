@@ -18,22 +18,25 @@ try:
 except ImportError:
     METRICS_ENABLED = False
 
-# Configuration for each client
+# Configuration for each client - Now with mixed attack types
 CLIENT_CONFIGS = {
     0: {
-        'name': 'IoT-Device-NTP',
-        'dataset': 'C:/Users/nani/Desktop/MINOR/01-12/DrDoS_NTP.csv',
-        'description': 'NTP Reflection Attack Detection'
+        'name': 'IoT-Device-Mixed-1',
+        'dataset': 'C:/Users/nani/Desktop/MINOR/01-12/DrDoS_NTP.csv',  # Primary
+        'description': 'Mixed: NTP + UDP + Syn Attacks',
+        'attack_mix': ['DrDoS_NTP', 'DrDoS_UDP', 'Syn']
     },
     1: {
-        'name': 'IoT-Device-Portmap',
-        'dataset': 'C:/Users/nani/Desktop/MINOR/03-11/Portmap.csv',
-        'description': 'Portmap Attack Detection'
+        'name': 'IoT-Device-Mixed-2',
+        'dataset': 'C:/Users/nani/Desktop/MINOR/03-11/Portmap.csv',  # Primary
+        'description': 'Mixed: DNS + Syn + UDP Attacks',
+        'attack_mix': ['DrDoS_DNS', 'Syn', 'UDP']
     },
     2: {
-        'name': 'IoT-Device-DNS',
-        'dataset': 'C:/Users/nani/Desktop/MINOR/01-12/DrDoS_DNS.csv',
-        'description': 'DNS Reflection Attack Detection'
+        'name': 'IoT-Device-Mixed-3',
+        'dataset': 'C:/Users/nani/Desktop/MINOR/01-12/DrDoS_DNS.csv',  # Primary
+        'description': 'Mixed: NTP + DNS + UDP Attacks',
+        'attack_mix': ['DrDoS_NTP', 'DrDoS_DNS', 'UDP']
     }
 }
 
@@ -82,22 +85,43 @@ class DDoSClient(fl.client.NumPyClient):
         
         # Train on local data
         print(f"🔄 {self.client_name}: Training on local data...")
+        
+        # Use early stopping and class weights for better training
+        from tensorflow.keras.callbacks import EarlyStopping
+        
+        # Calculate class weights to handle imbalance
+        total_samples = len(self.y_train)
+        n_class_0 = sum(self.y_train == 0)
+        n_class_1 = sum(self.y_train == 1)
+        
+        weight_for_0 = (1 / n_class_0) * (total_samples / 2.0) if n_class_0 > 0 else 1.0
+        weight_for_1 = (1 / n_class_1) * (total_samples / 2.0) if n_class_1 > 0 else 1.0
+        
+        class_weight = {0: weight_for_0, 1: weight_for_1}
+        
+        # Early stopping to prevent overfitting
+        early_stop = EarlyStopping(monitor='val_loss', patience=2, restore_best_weights=True)
+        
         history = self.model.fit(
             self.X_train, 
             self.y_train,
-            epochs=3,  # Local training epochs
-            batch_size=32,
-            verbose=0,  # Silent training
-            validation_split=0.1
+            epochs=5,  # Increased epochs with early stopping
+            batch_size=64,  # Larger batch size for stability
+            verbose=0,
+            validation_split=0.15,  # More validation data
+            class_weight=class_weight,  # Handle imbalanced data
+            callbacks=[early_stop]
         )
         
         # Get final metrics
         final_loss = history.history['loss'][-1]
         final_acc = history.history['accuracy'][-1]
+        val_loss = history.history['val_loss'][-1] if 'val_loss' in history.history else final_loss
+        val_acc = history.history['val_accuracy'][-1] if 'val_accuracy' in history.history else final_acc
         
         print(f"✅ {self.client_name}: Training complete!")
-        print(f"   Loss: {final_loss:.4f}")
-        print(f"   Accuracy: {final_acc:.4f}")
+        print(f"   Training   - Loss: {final_loss:.4f}, Accuracy: {final_acc:.4f}")
+        print(f"   Validation - Loss: {val_loss:.4f}, Accuracy: {val_acc:.4f}")
         
         # Update metrics for dashboard
         if METRICS_ENABLED:
@@ -129,22 +153,31 @@ class DDoSClient(fl.client.NumPyClient):
         self.model.set_weights(parameters)
         
         # Evaluate on local test set
-        loss, accuracy, precision, recall = self.model.evaluate(
+        results = self.model.evaluate(
             self.X_test, 
             self.y_test,
             verbose=0
         )
+        
+        # Unpack results (loss, accuracy, precision, recall, auc)
+        loss = results[0]
+        accuracy = results[1]
+        precision = results[2] if len(results) > 2 else 0
+        recall = results[3] if len(results) > 3 else 0
+        auc = results[4] if len(results) > 4 else 0
         
         print(f"📊 {self.client_name}: Evaluation Results:")
         print(f"   Loss: {loss:.4f}")
         print(f"   Accuracy: {accuracy:.4f}")
         print(f"   Precision: {precision:.4f}")
         print(f"   Recall: {recall:.4f}")
+        print(f"   AUC: {auc:.4f}")
         
         return loss, len(self.X_test), {
             "accuracy": accuracy,
             "precision": precision,
-            "recall": recall
+            "recall": recall,
+            "auc": auc
         }
 
 

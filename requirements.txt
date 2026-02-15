@@ -1,16 +1,7 @@
-# Required packages for Federated Learning DDoS Detection
 pandas>=2.0.0
 numpy>=1.24.0
 scikit-learn>=1.3.0
-
-# TensorFlow (requires Python 3.9-3.12)
-# For Python 3.14, TensorFlow is not yet available
-# SOLUTION: Create a new virtual environment with Python 3.11 or 3.12
-tensorflow>=2.15.0  # or tensorflow-cpu for CPU-only
-
-# Federated Learning
+tensorflow>=2.15.0  
 flwr>=1.10.0
-
-# Optional: For visualization
 matplotlib>=3.7.0
 seaborn>=0.12.0
